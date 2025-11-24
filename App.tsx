@@ -9,6 +9,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { HamburgerIcon } from './components/icons/HamburgerIcon';
 import { ModelSelector } from './components/ModelSelector';
 import { ChatAttachment, Theme, Model, ALL_MODELS, TtsVoice, ChatRole } from './types';
+import { BotIcon } from './components/icons/BotIcon';
 
 import { useTheme } from './hooks/useTheme';
 import { useSessions } from './hooks/useSessions';
@@ -20,6 +21,7 @@ const DEFAULT_TTS_VOICE: TtsVoice = 'Kore';
 
 const App: React.FC = () => {
     // App-level configuration state
+    const [hasApiKey, setHasApiKey] = useState(false);
     const [systemInstruction, setSystemInstruction] = useState(DEFAULT_SYSTEM_INSTRUCTION);
     const [model, setModel] = useState<Model>(DEFAULT_MODEL);
     const [ttsVoice, setTtsVoice] = useState<TtsVoice>(DEFAULT_TTS_VOICE);
@@ -44,6 +46,36 @@ const App: React.FC = () => {
         model, ttsVoice, systemInstruction, candidateCount,
         addMessageToSession, updateMessageById, updateFireAiState 
     });
+
+    // Check for API Key on mount
+    useEffect(() => {
+        const checkApiKey = async () => {
+            // If running in an environment where process.env.API_KEY is already set (e.g. local dev with .env)
+            if (process.env.API_KEY) {
+                setHasApiKey(true);
+                return;
+            }
+            // Check AI Studio environment
+            if (window.aistudio) {
+                const hasKey = await window.aistudio.hasSelectedApiKey();
+                setHasApiKey(hasKey);
+            }
+        };
+        checkApiKey();
+    }, []);
+
+    const handleApiKeySelection = async () => {
+        if (window.aistudio) {
+            try {
+                await window.aistudio.openSelectKey();
+                setHasApiKey(true);
+            } catch (error) {
+                console.error("API Key selection failed:", error);
+            }
+        } else {
+            alert("API Key selection is not available in this environment. Please configure process.env.API_KEY.");
+        }
+    };
 
     // Load app configuration from localStorage on initial mount
     useEffect(() => {
@@ -134,6 +166,35 @@ const App: React.FC = () => {
     }, [handleSelectSession]);
 
     const canRegenerate = activeSession?.messages.some(m => m.role === ChatRole.MODEL) || false;
+
+    if (!hasApiKey) {
+        return (
+            <div className="flex items-center justify-center h-screen bg-light-bg dark:bg-dark-bg text-light-text-primary dark:text-dark-text-primary p-4">
+                <div className="max-w-md w-full bg-light-sidebar dark:bg-dark-sidebar p-8 rounded-3xl shadow-2xl text-center border border-light-border dark:border-dark-border">
+                    <div className="w-20 h-20 mx-auto bg-gradient-to-br from-gemini-blue to-gemini-violet rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+                        <BotIcon className="w-10 h-10 text-white" />
+                    </div>
+                    <h1 className="text-2xl font-bold mb-3">خوش آمدید</h1>
+                    <p className="text-light-text-secondary dark:text-dark-text-secondary mb-8">
+                        برای شروع استفاده از هوش مصنوعی Gemini، لطفاً کلید API خود را متصل کنید. این کار رایگان و امن است.
+                    </p>
+                    <button 
+                        onClick={handleApiKeySelection}
+                        className="w-full py-3.5 px-6 bg-gemini-blue hover:bg-gemini-blue/90 text-white font-bold rounded-xl transition-transform active:scale-95 shadow-md"
+                    >
+                        اتصال حساب گوگل
+                    </button>
+                    <p className="mt-6 text-xs text-light-text-secondary dark:text-dark-text-secondary">
+                        با کلیک بر روی دکمه بالا، شما شرایط استفاده از خدمات Google AI را می‌پذیرید.
+                        <br />
+                        <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noreferrer" className="underline hover:text-gemini-blue mt-1 inline-block">
+                            اطلاعات بیشتر درباره Billing
+                        </a>
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className={`flex h-screen overflow-hidden bg-light-bg dark:bg-dark-bg font-sans`}>

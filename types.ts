@@ -2,6 +2,15 @@
 // FIX: Define types used throughout the application.
 import { Part } from "@google/genai";
 
+declare global {
+  interface Window {
+    aistudio?: {
+      hasSelectedApiKey: () => Promise<boolean>;
+      openSelectKey: () => Promise<void>;
+    };
+  }
+}
+
 export enum ChatRole {
   USER = 'user',
   MODEL = 'model',
