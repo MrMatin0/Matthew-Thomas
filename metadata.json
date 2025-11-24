@@ -1,0 +1,5 @@
+{
+  "name": "Gemini Pro Chat",
+  "description": "A sleek, high-performance chat application powered by Google's Gemini models. It features a stunning user interface, real-time streaming, markdown support, model selection, system instructions, and image uploads.",
+  "requestFramePermissions": []
+}
