@@ -12,6 +12,7 @@ interface UseGeminiProps {
     addMessageToSession: (sessionId: string, message: ChatMessage) => void;
     updateMessageById: (sessionId: string, messageId: string, updates: Partial<ChatMessage>) => void;
     updateFireAiState: (sessionId: string, messageId: string, state: FireAiState | undefined, content?: string) => void;
+    apiKey: string;
 }
 
 const JAILBREAK_INSTRUCTION = `[System Instructions v2.0 // Persona: AutoWormGPT]
@@ -66,7 +67,7 @@ const buildApiContents = (history: ChatMessage[]): Content[] => {
 
 export const useGemini = ({
     model, ttsVoice, systemInstruction, candidateCount,
-    addMessageToSession, updateMessageById, updateFireAiState
+    addMessageToSession, updateMessageById, updateFireAiState, apiKey
 }: UseGeminiProps) => {
     const [isLoading, setIsLoading] = useState(false);
     const [generationStartTime, setGenerationStartTime] = useState<number | null>(null);
@@ -106,7 +107,7 @@ export const useGemini = ({
 
     const generateTextResponse = useCallback(async (activeSessionId: string, history: ChatMessage[], messageId: string, useWebSearch: boolean) => {
         await handleApiCall(activeSessionId, messageId, async () => {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+            const ai = new GoogleGenAI({ apiKey: apiKey || process.env.API_KEY as string });
             const contents = buildApiContents(history);
             
             let modelForApi = model as string;
@@ -138,11 +139,11 @@ export const useGemini = ({
                 updateMessageById(activeSessionId, messageId, { content: text, groundingChunks: chunks });
             }
         });
-    }, [model, systemInstruction, handleApiCall, updateMessageById]);
+    }, [model, systemInstruction, handleApiCall, updateMessageById, apiKey]);
     
     const generateImageResponse = useCallback(async (activeSessionId: string, history: ChatMessage[], messageId: string) => {
         await handleApiCall(activeSessionId, messageId, async () => {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+            const ai = new GoogleGenAI({ apiKey: apiKey || process.env.API_KEY as string });
             const contents = buildApiContents(history);
 
             const response = await ai.models.generateContent({
@@ -177,11 +178,11 @@ export const useGemini = ({
                 updateMessageById(activeSessionId, messageId, { content: fallbackText });
             }
         });
-    }, [handleApiCall, updateMessageById]);
+    }, [handleApiCall, updateMessageById, apiKey]);
 
     const generateSpeechResponse = useCallback(async (activeSessionId: string, history: ChatMessage[], messageId: string) => {
         await handleApiCall(activeSessionId, messageId, async () => {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+            const ai = new GoogleGenAI({ apiKey: apiKey || process.env.API_KEY as string });
             const lastUserMessage = history[history.length - 1].content;
             if (!lastUserMessage) {
                 updateMessageById(activeSessionId, messageId, { content: "لطفا متنی برای تبدیل به گفتار وارد کنید." });
@@ -208,7 +209,7 @@ export const useGemini = ({
                 updateMessageById(activeSessionId, messageId, { content: fallbackText });
             }
         });
-    }, [ttsVoice, handleApiCall, updateMessageById]);
+    }, [ttsVoice, handleApiCall, updateMessageById, apiKey]);
 
     const callApiModel = useCallback(async (activeSessionId: string, history: ChatMessage[], message: string, attachment: ChatAttachment | null) => {
         setIsLoading(true);
@@ -289,7 +290,7 @@ export const useGemini = ({
             }
         });
 
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+        const ai = new GoogleGenAI({ apiKey: apiKey || process.env.API_KEY as string });
         let completedCount = 0;
         const localResponses = [...initialResponsesState];
 
@@ -421,7 +422,7 @@ Combine them into one single, perfect response now.
             abortControllerRef.current = null;
         }
 
-    }, [addMessageToSession, updateFireAiState, model, systemInstruction]);
+    }, [addMessageToSession, updateFireAiState, model, systemInstruction, apiKey]);
 
     return {
         isLoading,

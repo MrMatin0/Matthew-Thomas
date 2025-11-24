@@ -10,6 +10,7 @@ import { HamburgerIcon } from './components/icons/HamburgerIcon';
 import { ModelSelector } from './components/ModelSelector';
 import { ChatAttachment, Theme, Model, ALL_MODELS, TtsVoice, ChatRole } from './types';
 import { BotIcon } from './components/icons/BotIcon';
+import { CheckIcon } from './components/icons/CheckIcon';
 
 import { useTheme } from './hooks/useTheme';
 import { useSessions } from './hooks/useSessions';
@@ -21,7 +22,12 @@ const DEFAULT_TTS_VOICE: TtsVoice = 'Kore';
 
 const App: React.FC = () => {
     // App-level configuration state
+    const [apiKey, setApiKey] = useState<string>(() => {
+        return process.env.API_KEY || localStorage.getItem('gemini_api_key') || '';
+    });
     const [hasApiKey, setHasApiKey] = useState(false);
+    const [tempApiKey, setTempApiKey] = useState('');
+
     const [systemInstruction, setSystemInstruction] = useState(DEFAULT_SYSTEM_INSTRUCTION);
     const [model, setModel] = useState<Model>(DEFAULT_MODEL);
     const [ttsVoice, setTtsVoice] = useState<TtsVoice>(DEFAULT_TTS_VOICE);
@@ -44,14 +50,15 @@ const App: React.FC = () => {
         handleFireAiGeneration, stopGeneration 
     } = useGemini({ 
         model, ttsVoice, systemInstruction, candidateCount,
-        addMessageToSession, updateMessageById, updateFireAiState 
+        addMessageToSession, updateMessageById, updateFireAiState,
+        apiKey
     });
 
     // Check for API Key on mount
     useEffect(() => {
         const checkApiKey = async () => {
             // If running in an environment where process.env.API_KEY is already set (e.g. local dev with .env)
-            if (process.env.API_KEY) {
+            if (apiKey) {
                 setHasApiKey(true);
                 return;
             }
@@ -62,18 +69,34 @@ const App: React.FC = () => {
             }
         };
         checkApiKey();
-    }, []);
+    }, [apiKey]);
+    
+    // Save API key to local storage whenever it changes
+    useEffect(() => {
+        if (apiKey) {
+            localStorage.setItem('gemini_api_key', apiKey);
+        }
+    }, [apiKey]);
 
     const handleApiKeySelection = async () => {
         if (window.aistudio) {
             try {
                 await window.aistudio.openSelectKey();
-                setHasApiKey(true);
+                const hasKey = await window.aistudio.hasSelectedApiKey();
+                setHasApiKey(hasKey);
             } catch (error) {
                 console.error("API Key selection failed:", error);
             }
         } else {
-            alert("API Key selection is not available in this environment. Please configure process.env.API_KEY.");
+            alert("API Key selection is not available in this environment. Please enter your API key manually.");
+        }
+    };
+
+    const handleManualKeySubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (tempApiKey.trim()) {
+            setApiKey(tempApiKey.trim());
+            setHasApiKey(true);
         }
     };
 
@@ -170,27 +193,58 @@ const App: React.FC = () => {
     if (!hasApiKey) {
         return (
             <div className="flex items-center justify-center h-screen bg-light-bg dark:bg-dark-bg text-light-text-primary dark:text-dark-text-primary p-4">
-                <div className="max-w-md w-full bg-light-sidebar dark:bg-dark-sidebar p-8 rounded-3xl shadow-2xl text-center border border-light-border dark:border-dark-border">
+                <div className="max-w-md w-full bg-light-sidebar dark:bg-dark-sidebar p-8 rounded-3xl shadow-2xl text-center border border-light-border dark:border-dark-border animate-fade-in">
                     <div className="w-20 h-20 mx-auto bg-gradient-to-br from-gemini-blue to-gemini-violet rounded-2xl flex items-center justify-center mb-6 shadow-lg">
                         <BotIcon className="w-10 h-10 text-white" />
                     </div>
                     <h1 className="text-2xl font-bold mb-3">خوش آمدید</h1>
-                    <p className="text-light-text-secondary dark:text-dark-text-secondary mb-8">
-                        برای شروع استفاده از هوش مصنوعی Gemini، لطفاً کلید API خود را متصل کنید. این کار رایگان و امن است.
+                    <p className="text-light-text-secondary dark:text-dark-text-secondary mb-6">
+                        برای شروع استفاده از هوش مصنوعی Gemini، لطفاً کلید API خود را متصل کنید.
                     </p>
+                    
+                    {/* Google Auth Button */}
                     <button 
                         onClick={handleApiKeySelection}
-                        className="w-full py-3.5 px-6 bg-gemini-blue hover:bg-gemini-blue/90 text-white font-bold rounded-xl transition-transform active:scale-95 shadow-md"
+                        className="w-full py-3.5 px-6 mb-4 bg-gemini-blue hover:bg-gemini-blue/90 text-white font-bold rounded-xl transition-transform active:scale-95 shadow-md flex items-center justify-center gap-2"
                     >
-                        اتصال حساب گوگل
+                         <span>اتصال حساب گوگل (AI Studio)</span>
                     </button>
-                    <p className="mt-6 text-xs text-light-text-secondary dark:text-dark-text-secondary">
-                        با کلیک بر روی دکمه بالا، شما شرایط استفاده از خدمات Google AI را می‌پذیرید.
-                        <br />
-                        <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noreferrer" className="underline hover:text-gemini-blue mt-1 inline-block">
-                            اطلاعات بیشتر درباره Billing
-                        </a>
-                    </p>
+                    
+                    <div className="relative flex py-2 items-center">
+                        <div className="flex-grow border-t border-light-border dark:border-dark-border"></div>
+                        <span className="flex-shrink-0 mx-4 text-light-text-secondary dark:text-dark-text-secondary text-xs">یا</span>
+                        <div className="flex-grow border-t border-light-border dark:border-dark-border"></div>
+                    </div>
+
+                    {/* Manual API Key Input */}
+                    <form onSubmit={handleManualKeySubmit} className="mt-4">
+                        <label className="block text-right text-xs text-light-text-secondary dark:text-dark-text-secondary mb-2 pr-1">
+                            وارد کردن دستی کلید API:
+                        </label>
+                        <div className="flex gap-2">
+                            <input 
+                                type="password" 
+                                value={tempApiKey}
+                                onChange={(e) => setTempApiKey(e.target.value)}
+                                className="flex-1 bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-gemini-blue outline-none text-sm transition-all"
+                                placeholder="کلید API خود را اینجا وارد کنید..."
+                            />
+                            <button 
+                                type="submit"
+                                disabled={!tempApiKey.trim()}
+                                className="bg-light-bubble-model dark:bg-dark-bubble-model hover:bg-green-500/20 hover:text-green-500 disabled:opacity-50 disabled:cursor-not-allowed p-3 rounded-xl transition-all border border-transparent hover:border-green-500/50"
+                                aria-label="Save API Key"
+                            >
+                                <CheckIcon className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <p className="mt-3 text-[10px] text-light-text-secondary dark:text-dark-text-secondary text-right">
+                           کلید API شما فقط در مرورگر ذخیره می‌شود و به سرور ما ارسال نمی‌گردد.
+                           <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline hover:text-gemini-blue mr-1">
+                               دریافت کلید API
+                           </a>
+                        </p>
+                    </form>
                 </div>
             </div>
         );
@@ -253,6 +307,7 @@ const App: React.FC = () => {
                 currentInstruction={systemInstruction}
                 currentTtsVoice={ttsVoice}
                 onTtsVoiceChange={setTtsVoice}
+                apiKey={apiKey}
             />
         </div>
     );
