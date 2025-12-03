@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { ChatAttachment, Model } from '../types';
@@ -13,7 +14,7 @@ import { CandidateSelector } from './CandidateSelector';
 
 
 interface ChatFooterProps {
-    onSendMessage: (message: string, attachment?: ChatAttachment | null) => void;
+    onSendMessage: (message: string, attachments: ChatAttachment[]) => void;
     isLoading: boolean;
     onStopGeneration: () => void;
     onRegenerateResponse: () => void;
@@ -39,7 +40,7 @@ const ChatFooter = ({
     model
 }: ChatFooterProps) => {
     const [prompt, setPrompt] = useState('');
-    const [attachment, setAttachment] = useState<ChatAttachment | null>(null);
+    const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
     const [isCandidateSelectorOpen, setIsCandidateSelectorOpen] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -60,11 +61,11 @@ const ChatFooter = ({
     }, [prompt, adjustTextareaHeight]);
 
     const handleSend = () => {
-        if (isLoading && !attachment) return;
-        if (prompt.trim() || attachment) {
-            onSendMessage(prompt, attachment);
+        if (isLoading && attachments.length === 0) return;
+        if (prompt.trim() || attachments.length > 0) {
+            onSendMessage(prompt, attachments);
             setPrompt('');
-            setAttachment(null);
+            setAttachments([]);
         }
     };
     
@@ -76,16 +77,26 @@ const ChatFooter = ({
     };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            const processedFile = await processFile(file);
-            setAttachment(processedFile);
+        if (e.target.files && e.target.files.length > 0) {
+            const newAttachments: ChatAttachment[] = [];
+            for (let i = 0; i < e.target.files.length; i++) {
+                const file = e.target.files[i];
+                const processedFile = await processFile(file);
+                if (processedFile) {
+                    newAttachments.push(processedFile);
+                }
+            }
+            setAttachments(prev => [...prev, ...newAttachments]);
             e.target.value = ''; // Reset file input
         }
     };
+
+    const removeAttachment = (index: number) => {
+        setAttachments(prev => prev.filter((_, i) => i !== index));
+    };
     
     return (
-        <div className="flex-shrink-0 bg-light-bg dark:bg-dark-bg pt-2">
+        <div className="flex-shrink-0 bg-light-bg dark:bg-dark-bg pt-2 w-full z-20">
             <div className="relative w-full max-w-4xl mx-auto px-4 flex flex-col items-center">
                 {isLoading ? (
                     <button 
@@ -117,7 +128,7 @@ const ChatFooter = ({
                     )}
                 </AnimatePresence>
 
-                <div className="w-full bg-light-sidebar dark:bg-dark-sidebar rounded-4xl p-2 flex items-end gap-2 border border-light-border dark:border-dark-border focus-within:ring-2 focus-within:ring-gemini-blue transition-shadow shadow-sm">
+                <div className="w-full bg-light-sidebar dark:bg-dark-sidebar rounded-3xl p-2 flex items-end gap-2 border border-light-border dark:border-dark-border focus-within:ring-2 focus-within:ring-gemini-blue transition-shadow shadow-sm">
                     <div className="relative">
                         <button 
                             onClick={() => setIsCandidateSelectorOpen(prev => !prev)}
@@ -154,18 +165,40 @@ const ChatFooter = ({
                     </button>
                     <input
                         type="file"
+                        multiple // Enable multiple file selection
                         ref={fileInputRef}
                         onChange={handleFileChange}
                         className="hidden"
                     />
                     
-                    <div className="flex-1 flex flex-col">
-                        {attachment && (
-                            <div className="mb-2 px-3 py-1.5 bg-light-bg dark:bg-dark-bg rounded-lg text-sm flex items-center justify-between gap-2 border border-light-border dark:border-dark-border animate-fade-in">
-                                <span className="truncate">{attachment.name}</span>
-                                <button onClick={() => setAttachment(null)} className="p-1 rounded-full hover:bg-light-bubble-model dark:hover:bg-dark-bubble-model">
-                                    <CloseIcon className="w-4 h-4" />
-                                </button>
+                    <div className="flex-1 flex flex-col min-w-0">
+                        {attachments.length > 0 && (
+                            <div className="flex gap-3 overflow-x-auto py-3 px-1 w-full mb-1 touch-pan-x" style={{ scrollbarWidth: 'thin' }}>
+                                {attachments.map((file, index) => (
+                                    <div key={index} className="relative flex-shrink-0 group">
+                                        <div className="w-20 h-20 rounded-xl border border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg overflow-hidden flex items-center justify-center relative">
+                                            {file.type === 'image' ? (
+                                                <img src={file.data} alt={file.name} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
+                                            ) : (
+                                                <div className="flex flex-col items-center justify-center text-light-text-secondary dark:text-dark-text-secondary p-2">
+                                                    <AttachmentIcon className="w-8 h-8 mb-1" />
+                                                </div>
+                                            )}
+                                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-[2px] text-white text-[9px] px-1 py-0.5 truncate text-center">
+                                                {file.name}
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Single Delete Button */}
+                                        <button 
+                                            onClick={() => removeAttachment(index)} 
+                                            className="absolute -top-2 -left-2 bg-light-sidebar dark:bg-dark-sidebar text-red-500 rounded-full p-1 shadow-md border border-light-border dark:border-dark-border hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors z-10"
+                                            title="حذف"
+                                        >
+                                            <CloseIcon className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                ))}
                             </div>
                         )}
                         <textarea
@@ -175,14 +208,14 @@ const ChatFooter = ({
                             onKeyDown={handleKeyDown}
                             placeholder="پیامت رو بنویس..."
                             rows={1}
-                            className="w-full bg-transparent p-2.5 resize-none focus:outline-none placeholder:text-light-text-secondary placeholder:dark:text-dark-text-secondary max-h-48"
+                            className="w-full bg-transparent p-2.5 resize-none focus:outline-none placeholder:text-light-text-secondary placeholder:dark:text-dark-text-secondary max-h-48 text-light-text-primary dark:text-dark-text-primary"
                         />
                     </div>
                     
                     <button
                         onClick={handleSend}
-                        disabled={isLoading || (!prompt.trim() && !attachment)}
-                        className="p-3 bg-dark-bubble-user text-white rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+                        disabled={isLoading || (!prompt.trim() && attachments.length === 0)}
+                        className="p-3 bg-dark-bubble-user text-white rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 flex-shrink-0"
                         aria-label="Send message"
                     >
                         <SendIcon className="w-6 h-6" />

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { ChatSession, ChatMessage, Model, FireAiState, AudioOutput, ChatAttachment } from '../types';
 import { v4 as uuidv4 } from 'uuid';
@@ -26,20 +27,31 @@ export const useSessions = (systemInstruction: string, model: Model) => {
             let loadedSessions: ChatSession[] = [];
 
             if (savedSessions) {
-                const parsedSessions: ChatSession[] = JSON.parse(savedSessions);
-                parsedSessions.forEach(session => {
-                    session.messages.forEach(message => {
+                const parsedSessions: any[] = JSON.parse(savedSessions);
+                // Migration logic: convert single attachment to attachments array
+                loadedSessions = parsedSessions.map(session => ({
+                    ...session,
+                    messages: session.messages.map((message: any) => {
                         if (!message.id) message.id = uuidv4();
                         if (message.fireAiState) message.fireAiState = undefined;
-                    });
-                });
-                loadedSessions = parsedSessions;
+                        
+                        // Handle legacy attachment field
+                        if (message.attachment && !message.attachments) {
+                            message.attachments = [message.attachment];
+                            delete message.attachment;
+                        } else if (!message.attachments) {
+                            message.attachments = [];
+                        }
+                        return message as ChatMessage;
+                    })
+                }));
+                
                 setSessions(loadedSessions);
 
-                if (savedActiveId && parsedSessions.some(s => s.id === savedActiveId)) {
+                if (savedActiveId && loadedSessions.some(s => s.id === savedActiveId)) {
                     setActiveSessionId(savedActiveId);
-                } else if (parsedSessions.length > 0) {
-                    setActiveSessionId(parsedSessions[0].id);
+                } else if (loadedSessions.length > 0) {
+                    setActiveSessionId(loadedSessions[0].id);
                 }
             }
             
@@ -98,7 +110,7 @@ export const useSessions = (systemInstruction: string, model: Model) => {
         }));
     }, []);
 
-    const updateMessageById = useCallback((sessionId: string, messageId: string, updates: Partial<Pick<ChatMessage, 'content' | 'attachment' | 'groundingChunks' | 'generationTime' | 'audioOutput'>>) => {
+    const updateMessageById = useCallback((sessionId: string, messageId: string, updates: Partial<Pick<ChatMessage, 'content' | 'attachments' | 'groundingChunks' | 'generationTime' | 'audioOutput'>>) => {
         setSessions(prev => prev.map(s => {
             if (s.id === sessionId) {
                 const newMessages = s.messages.map(m => {
@@ -106,7 +118,7 @@ export const useSessions = (systemInstruction: string, model: Model) => {
                         return {
                             ...m,
                             content: updates.content !== undefined ? m.content + updates.content : m.content,
-                            attachment: updates.attachment !== undefined ? updates.attachment : m.attachment,
+                            attachments: updates.attachments !== undefined ? updates.attachments : m.attachments,
                             audioOutput: updates.audioOutput !== undefined ? updates.audioOutput : m.audioOutput,
                             generationTime: updates.generationTime !== undefined ? updates.generationTime : m.generationTime,
                             groundingChunks: updates.groundingChunks ?

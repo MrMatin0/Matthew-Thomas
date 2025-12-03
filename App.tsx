@@ -146,14 +146,14 @@ const App: React.FC = () => {
         }
     }, [model, isFireAiActive]);
 
-    const handleSendMessage = (message: string, attachment: ChatAttachment | null) => {
+    const handleSendMessage = (message: string, attachments: ChatAttachment[]) => {
         if (!activeSessionId || !activeSession) return;
         const historyForApi = [...activeSession.messages];
         if (isFireAiActive) {
-            handleFireAiGeneration(activeSessionId, historyForApi, message, attachment);
+            handleFireAiGeneration(activeSessionId, historyForApi, message, attachments);
             setIsFireAiActive(false); // Deactivate after one use
         } else {
-            callApiModel(activeSessionId, historyForApi, message, attachment);
+            callApiModel(activeSessionId, historyForApi, message, attachments);
         }
     };
 
@@ -169,7 +169,7 @@ const App: React.FC = () => {
         if (lastUserMessage) {
             setMessagesForSession(activeSessionId, messagesWithoutLastModelResponse);
             // Re-use the last user message to call the API
-            callApiModel(activeSessionId, messagesWithoutLastModelResponse, lastUserMessage.content, lastUserMessage.attachment || null);
+            callApiModel(activeSessionId, messagesWithoutLastModelResponse, lastUserMessage.content, lastUserMessage.attachments || null);
         }
     };
     
@@ -251,7 +251,7 @@ const App: React.FC = () => {
     }
 
     return (
-        <div className={`flex h-screen overflow-hidden bg-light-bg dark:bg-dark-bg font-sans`}>
+        <div className={`flex fixed inset-0 w-full h-full overflow-hidden bg-light-bg dark:bg-dark-bg font-sans`}>
             <Sidebar 
                 sessions={sessions}
                 activeSessionId={activeSessionId}
@@ -266,8 +266,8 @@ const App: React.FC = () => {
                 onToggleTheme={toggleTheme}
             />
 
-            <main className="flex-1 flex flex-col relative">
-                <header className="flex-shrink-0 h-16 flex items-center justify-between px-4 border-b border-light-border dark:border-dark-border">
+            <main className="flex-1 flex flex-col relative w-full h-full">
+                <header className="flex-shrink-0 h-16 flex items-center justify-between px-4 border-b border-light-border dark:border-dark-border bg-light-bg dark:bg-dark-bg z-10">
                     <div className="flex items-center gap-4">
                         <button onClick={() => setIsMobileDrawerOpen(true)} className="lg:hidden p-2 -ml-2">
                             <HamburgerIcon className="w-6 h-6 text-light-text-primary dark:text-dark-text-primary"/>
@@ -279,7 +279,7 @@ const App: React.FC = () => {
                     <ModelSelector selectedModel={model} onSelectModel={setModel} />
                 </header>
 
-                <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+                <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 scroll-smooth">
                     {activeSession?.messages.map((msg) => (
                         <ChatBubble key={msg.id} message={msg} />
                     ))}

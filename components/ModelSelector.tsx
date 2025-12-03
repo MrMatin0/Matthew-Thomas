@@ -10,7 +10,6 @@ import { LiteIcon } from './icons/LiteIcon';
 import { ImageIcon } from './icons/ImageIcon';
 import { SearchIcon } from './icons/SearchIcon';
 import { TtsIcon } from './icons/TtsIcon';
-import { FireIcon } from './icons/FireIcon';
 import { useClickOutside } from '../hooks/useClickOutside';
 
 interface ModelSelectorProps {
@@ -26,7 +25,6 @@ const modelDetails: Record<Model, { name: string; icon: React.FC<any> }> = {
   'gemini-2.5-flash-preview-tts': { name: 'Gemini TTS', icon: TtsIcon },
   'web-search': { name: 'Search Web', icon: SearchIcon },
   'gemini-3-pro-preview': { name: 'Gemini 3.0 Preview', icon: ProIcon },
-  'gemini-3-jailbreak': { name: 'Gemini 3.0 (JailBreak)', icon: FireIcon },
 };
 
 // FIX: Refactor to a standard function component to fix framer-motion prop type errors.
@@ -34,6 +32,11 @@ export const ModelSelector = ({ selectedModel, onSelectModel }: ModelSelectorPro
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useClickOutside<HTMLDivElement>(() => setIsOpen(false));
   const selectedModelInfo = modelDetails[selectedModel];
+
+  // Fallback in case the selected model isn't in our details map yet
+  if (!selectedModelInfo) {
+      return null; 
+  }
 
   const handleSelect = (model: Model) => {
     onSelectModel(model);
@@ -58,9 +61,9 @@ export const ModelSelector = ({ selectedModel, onSelectModel }: ModelSelectorPro
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="absolute top-full right-0 mt-2 w-48 bg-light-sidebar dark:bg-dark-sidebar border border-light-border dark:border-dark-border rounded-lg shadow-xl z-10 overflow-hidden"
+            className="absolute top-full right-0 mt-2 w-56 bg-light-sidebar dark:bg-dark-sidebar border border-light-border dark:border-dark-border rounded-lg shadow-xl z-10 overflow-hidden"
           >
-            <ul className="py-1">
+            <ul className="py-1 max-h-80 overflow-y-auto">
               {ALL_MODELS.map((modelId) => {
                 const modelInfo = modelDetails[modelId];
                 if (!modelInfo) return null;
@@ -70,8 +73,8 @@ export const ModelSelector = ({ selectedModel, onSelectModel }: ModelSelectorPro
                       onClick={() => handleSelect(modelId)}
                       className="w-full text-right flex items-center gap-3 px-3 py-2 text-sm hover:bg-light-bubble-model dark:hover:bg-dark-bubble-model"
                     >
-                      <modelInfo.icon className="w-5 h-5 text-gemini-blue" />
-                      <span className="text-light-text-primary dark:text-dark-text-primary">{modelInfo.name}</span>
+                      <modelInfo.icon className="w-5 h-5 text-gemini-blue flex-shrink-0" />
+                      <span className="text-light-text-primary dark:text-dark-text-primary truncate">{modelInfo.name}</span>
                     </button>
                   </li>
                 );

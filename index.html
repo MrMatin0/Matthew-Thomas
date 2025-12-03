@@ -2,7 +2,7 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>دستیار هوش مصنوعی Gemini</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -71,6 +71,17 @@
 }
 </script>
 <style>
+  /* Ensure full height and prevent body scroll for app-like feel */
+  html, body, #root {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: pan-x pan-y;
+  }
+
   /* Custom scrollbar for a sleeker look */
   ::-webkit-scrollbar {
     width: 6px;

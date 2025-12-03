@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -48,21 +49,27 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
         </div>
       )}
 
-      <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+      <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} max-w-full overflow-hidden`}>
         <div className={`group relative max-w-xl xl:max-w-3xl px-5 py-3 rounded-2xl shadow-sm ${
             isUser 
             ? 'bg-dark-bubble-user text-white rounded-tr-none' 
             : 'bg-light-bubble-model dark:bg-dark-bubble-model text-light-text-primary dark:text-dark-text-primary rounded-tl-none'
           }`}
         >
-           {message.attachment && <AttachmentRenderer attachment={message.attachment} />}
+           {/* Handle multiple attachments */}
+           {message.attachments && message.attachments.length > 0 && (
+                <AttachmentRenderer attachments={message.attachments} />
+           )}
+           {/* Fallback for legacy single attachment */}
+           {/* @ts-ignore */}
+           {message.attachment && <AttachmentRenderer attachments={[message.attachment]} />}
 
            {message.fireAiState ? (
                 <FireAiProcessVisualizer state={message.fireAiState} />
            ) : message.audioOutput ? (
                 <AudioPlayer audioOutput={message.audioOutput} />
            ) : (
-                <div className="prose prose-sm dark:prose-invert max-w-none text-light-text-primary dark:text-dark-text-primary">
+                <div className="prose prose-sm dark:prose-invert max-w-none text-light-text-primary dark:text-dark-text-primary break-words">
                     {message.content ? (
                         <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
@@ -78,7 +85,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
                             {message.content}
                         </ReactMarkdown>
                     ) : (
-                        !isUser && <span className="invisible">.</span>
+                        !isUser && (!message.attachments || message.attachments.length === 0) && <span className="invisible">.</span>
                     )}
                 </div>
            )}

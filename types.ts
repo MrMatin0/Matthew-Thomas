@@ -3,11 +3,13 @@
 import { Part } from "@google/genai";
 
 declare global {
+  interface AIStudio {
+    hasSelectedApiKey: () => Promise<boolean>;
+    openSelectKey: () => Promise<void>;
+  }
+
   interface Window {
-    aistudio?: {
-      hasSelectedApiKey: () => Promise<boolean>;
-      openSelectKey: () => Promise<void>;
-    };
+    aistudio?: AIStudio;
   }
 }
 
@@ -46,7 +48,7 @@ export interface ChatMessage {
   role: ChatRole;
   content: string;
   createdAt: number; // timestamp
-  attachment?: ChatAttachment | null;
+  attachments?: ChatAttachment[]; // Changed from single attachment to array
   audioOutput?: AudioOutput | null;
   groundingChunks?: GroundingChunk[];
   generationTime?: number;
@@ -71,7 +73,6 @@ export const ALL_MODELS = [
   'gemini-2.5-flash-preview-tts',
   'web-search',
   'gemini-3-pro-preview',
-  'gemini-3-jailbreak',
 ] as const;
 
 export type Model = typeof ALL_MODELS[number];
